@@ -6,7 +6,7 @@
   ],
   "latestYear": 2026,
   "latestPeriod": "2026 YTD (Jan–Jul)",
-  "rows": 52993,
+  "rows": 53420,
   "countries": [
     "Austria",
     "Belarus",
@@ -51,22 +51,42 @@
   "currency": "EUR",
   "sourceWorkbook": "欧洲1-7月.xlsx",
   "priceWorkbook": "欧洲合并1-4.xlsx",
-  "method": "Passenger vehicle Car/SUV/MPV only; Unspecified removed; sales summed by country + year + model + fuel + body.",
+  "method": "Passenger Car/SUV/MPV only; Unspecified removed; all positive source sales retained, including missing dimensions/prices; sales summed by country + year + model + fuel + body.",
+  "priceCurrencyBasis": "Price. (EUR) from Europe workbook; never localPrice without conversion",
+  "lengthMethods": {
+    "source_workbook": 52993,
+    "unavailable": 197,
+    "same_model_median": 229,
+    "official_web": 1
+  },
+  "incompleteRows": 1504,
   "priceMethods": {
-    "country_exact": 24473,
-    "europe_model_fuel_median": 26353,
-    "europe_model_median_other_powertrain": 617,
-    "unavailable": 1307,
-    "web_public_median": 243
+    "country_exact": 24662,
+    "europe_model_fuel_median": 26390,
+    "europe_model_median_other_powertrain": 620,
+    "unavailable": 1498,
+    "web_public_median": 249,
+    "web_public_median_converted": 1
   },
   "priceMethodSales": {
-    "country_exact": 33891617,
-    "europe_model_fuel_median": 3525625,
-    "europe_model_median_other_powertrain": 24334,
-    "unavailable": 49922,
-    "web_public_median": 210744
+    "country_exact": 34188115,
+    "europe_model_fuel_median": 3551160,
+    "europe_model_median_other_powertrain": 24390,
+    "unavailable": 81603,
+    "web_public_median": 248641,
+    "web_public_median_converted": 1091
   },
   "webSources": [
+    {
+      "country": "Norway",
+      "model": "BYD EVO 4x4",
+      "fuel": "BEV",
+      "localPrice": 389900,
+      "currency": "NOK",
+      "source": "https://viewer.ipaper.io/rsa-no/byd/byd-prisliste/",
+      "note": "Official 04.03.2026 price list: one Excellence AWD trim, NOK 389900 delivered Drammen, excluding optional paint/accessories. Converted using fixed prior workbook NOK/EUR basis.",
+      "checkedDate": "2026-09-30"
+    },
     {
       "model": "Volkswagen ID.3 (Neo)",
       "fuel": "BEV",
