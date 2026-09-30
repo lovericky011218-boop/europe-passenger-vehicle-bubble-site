@@ -1,0 +1,197 @@
+{
+  "years": [
+    2024,
+    2025,
+    2026
+  ],
+  "latestYear": 2026,
+  "latestPeriod": "2026 YTD (Jan–Jul)",
+  "rows": 52993,
+  "countries": [
+    "Austria",
+    "Belarus",
+    "Belgium",
+    "Bosnia-Herzegovina",
+    "Bulgaria",
+    "Croatia",
+    "Cyprus",
+    "Czech Republic",
+    "Denmark",
+    "Estonia",
+    "Finland",
+    "France",
+    "Germany",
+    "Greece",
+    "Hungary",
+    "Iceland",
+    "Ireland",
+    "Italy",
+    "Latvia",
+    "Lithuania",
+    "Luxembourg",
+    "Malta",
+    "Moldova",
+    "Netherlands",
+    "North Macedonia",
+    "Norway",
+    "Poland",
+    "Portugal",
+    "Romania",
+    "Russia",
+    "Serbia",
+    "Slovakia",
+    "Slovenia",
+    "Spain",
+    "Sweden",
+    "Switzerland",
+    "Turkey",
+    "Ukraine",
+    "United Kingdom"
+  ],
+  "currency": "EUR",
+  "sourceWorkbook": "欧洲1-7月.xlsx",
+  "priceWorkbook": "欧洲合并1-4.xlsx",
+  "method": "Passenger vehicle Car/SUV/MPV only; Unspecified removed; sales summed by country + year + model + fuel + body.",
+  "priceMethods": {
+    "country_exact": 24473,
+    "europe_model_fuel_median": 26353,
+    "europe_model_median_other_powertrain": 617,
+    "unavailable": 1307,
+    "web_public_median": 243
+  },
+  "priceMethodSales": {
+    "country_exact": 33891617,
+    "europe_model_fuel_median": 3525625,
+    "europe_model_median_other_powertrain": 24334,
+    "unavailable": 49922,
+    "web_public_median": 210744
+  },
+  "webSources": [
+    {
+      "model": "Volkswagen ID.3 (Neo)",
+      "fuel": "BEV",
+      "price": 39495,
+      "priceMin": 33995,
+      "priceMax": 44995,
+      "source": "https://ev-database.org/car/3479/Volkswagen-ID3-Neo-50-kWh",
+      "note": "2026 European ID.3 Neo 50/79 kWh public prices; median"
+    },
+    {
+      "model": "GMW Haval F7",
+      "fuel": "ICE",
+      "price": 35637,
+      "priceMin": 31444,
+      "priceMax": 39831,
+      "source": "https://cdn.perxis.ru/originals/d9tibrgbeucc73998fmg/original",
+      "note": "HAVAL Russia official 2026 price list; converted RUB to EUR"
+    },
+    {
+      "model": "GWM Haval H3",
+      "fuel": "ICE",
+      "price": 32492,
+      "priceMin": 28822,
+      "priceMax": 37210,
+      "source": "https://cdn.perxis.ru/originals/da1hstgbeucc73999j4g/original",
+      "note": "HAVAL Russia official 2026 price list; converted RUB to EUR"
+    },
+    {
+      "model": "GWM Haval Jolion",
+      "fuel": "ICE",
+      "price": 28036,
+      "priceMin": 22007,
+      "priceMax": 30919,
+      "source": "https://cdn.perxis.ru/originals/da1hsmobeucc73999j40/original",
+      "note": "HAVAL Russia official 2026 price list; converted RUB to EUR"
+    },
+    {
+      "model": "Renault Boreal",
+      "fuel": "ICE",
+      "price": 52133,
+      "priceMin": 42782,
+      "priceMax": 54830,
+      "source": "https://dogankabak.com.tr/2026/09/renault-fiyat-listesi-eylul-2026/",
+      "note": "Turkey Sep 2026 ICE trim prices; median converted TRY to EUR"
+    },
+    {
+      "model": "GWM Haval F7X",
+      "fuel": "ICE",
+      "price": 37734,
+      "priceMin": 37734,
+      "priceMax": 37734,
+      "source": "https://haval.ru/models/haval-f7x/",
+      "note": "HAVAL Russia official starting price; converted RUB to EUR"
+    },
+    {
+      "model": "Toyota bZ4X Touring",
+      "fuel": "BEV",
+      "price": 53080,
+      "priceMin": 51990,
+      "priceMax": 55000,
+      "source": "https://www.toyota.de/neuwagen/bz4x-touring/build",
+      "note": "Toyota Germany published trim prices; median"
+    },
+    {
+      "model": "Jaecoo 8",
+      "fuel": "PHEV",
+      "price": 54900,
+      "priceMin": 50889,
+      "priceMax": 55990,
+      "source": "https://www.omodajaecoo.pl/fileadmin/cenniki/Jaecoo_8-_cennik_nr_1_z_23_kwietnia_2026.pdf",
+      "note": "Published Spain, Netherlands and Poland prices; EUR median"
+    },
+    {
+      "model": "GWM Haval Dargo",
+      "fuel": "ICE",
+      "price": 38783,
+      "priceMin": 36686,
+      "priceMax": 40880,
+      "source": "https://cdn.perxis.ru/originals/d9f0urobeucc73e9vlo0/original",
+      "note": "HAVAL Russia official 2026 price list; converted RUB to EUR"
+    },
+    {
+      "model": "EVO EVO5",
+      "fuel": "ICE",
+      "price": 16900,
+      "priceMin": 15900,
+      "priceMax": 17900,
+      "source": "https://dyler.com/cars/evo/evo-5-for-sale/2026/497410/evo-evo-5-evo-5-1-5-turbo-essential-suv-2026-white-for-sale",
+      "note": "Italy 2026 petrol/LPG public offers; median"
+    },
+    {
+      "model": "BYD Dolphin G",
+      "fuel": "PHEV",
+      "price": 29240,
+      "priceMin": 25490,
+      "priceMax": 30990,
+      "source": "https://sos-at-vie-2.exo.io/denzelat-app-prod/assets/byd-dolphin-g-dm-i_priesliste_07-2026.pdf",
+      "note": "BYD Austria official Jul 2026 price list; median"
+    },
+    {
+      "model": "KGM Actyon",
+      "fuel": "ICE",
+      "price": 39450,
+      "priceMin": 35790,
+      "priceMax": 42250,
+      "source": "https://www.kgm.de/modelle/actyon",
+      "note": "KGM Germany official trim prices; median"
+    },
+    {
+      "model": "KGM Actyon",
+      "fuel": "HEV",
+      "price": 41940,
+      "priceMin": 38990,
+      "priceMax": 44890,
+      "source": "https://www.kgm.de/modelle/actyon",
+      "note": "Germany and Portugal published hybrid prices; EUR median"
+    },
+    {
+      "model": "Geely Cityray",
+      "fuel": "ICE",
+      "price": 23990,
+      "priceMin": 22990,
+      "priceMax": 24990,
+      "source": "https://geelyauto.compexit.ro/oferte/",
+      "note": "Romania public offers; median"
+    }
+  ]
+}
