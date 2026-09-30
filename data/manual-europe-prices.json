@@ -1,4 +1,5 @@
 [
+  {"country":"Norway","model":"BYD EVO 4x4","fuel":"BEV","localPrice":389900,"currency":"NOK","source":"https://viewer.ipaper.io/rsa-no/byd/byd-prisliste/","note":"Official 04.03.2026 price list: one Excellence AWD trim, NOK 389900 delivered Drammen, excluding optional paint/accessories. Converted using fixed prior workbook NOK/EUR basis.","checkedDate":"2026-09-30"},
   {"model":"Volkswagen ID.3 (Neo)","fuel":"BEV","price":39495,"priceMin":33995,"priceMax":44995,"source":"https://ev-database.org/car/3479/Volkswagen-ID3-Neo-50-kWh","note":"2026 European ID.3 Neo 50/79 kWh public prices; median"},
   {"model":"GMW Haval F7","fuel":"ICE","price":35637,"priceMin":31444,"priceMax":39831,"source":"https://cdn.perxis.ru/originals/d9tibrgbeucc73998fmg/original","note":"HAVAL Russia official 2026 price list; converted RUB to EUR"},
   {"model":"GWM Haval H3","fuel":"ICE","price":32492,"priceMin":28822,"priceMax":37210,"source":"https://cdn.perxis.ru/originals/da1hstgbeucc73999j4g/original","note":"HAVAL Russia official 2026 price list; converted RUB to EUR"},
