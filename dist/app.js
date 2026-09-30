@@ -31,10 +31,13 @@
   const fuels = fuelOrder.filter((value) => sourceRows.some((row) => row.fuel === value));
   const fmtInt = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 0 });
   const fmtEur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+  const years = meta.years || [2024, 2025, 2026];
 
   const allLengths = sourceRows.map((row) => row.length).filter(Number.isFinite);
   const allPrices = sourceRows.map((row) => row.price).filter(Number.isFinite);
-  const allSales = sourceRows.map((row) => row.sales).filter(Number.isFinite);
+  const combinedSales = new Map();
+  sourceRows.forEach((row) => { const key = `${row.model}\u0000${row.fuel}`; combinedSales.set(key, (combinedSales.get(key) || 0) + row.sales); });
+  const allSales = [...combinedSales.values()];
   const limits = {
     length: [Math.floor(Math.min(...allLengths) / 100) * 100, Math.ceil(Math.max(...allLengths) / 100) * 100],
     price: [Math.floor(Math.min(...allPrices) / 1000) * 1000, Math.ceil(Math.max(...allPrices) / 1000) * 1000],
@@ -42,7 +45,7 @@
   };
   const defaults = { length: [4400, 4800], price: [15000, 100000], sales: [...limits.sales] };
   const state = {
-    year: 2026,
+    years: new Set([2026]),
     countries: new Set([countries.includes("Germany") ? "Germany" : countries[0]].filter(Boolean)),
     bodies: new Set(bodies),
     fuels: new Set(fuels),
@@ -57,12 +60,26 @@
   };
 
   const controls = Object.fromEntries([
-    "countryButton", "countryMenu", "countrySearch", "countryOptions", "yearSelect", "sizeBand", "priceBand", "searchInput", "labelMode", "rankingFuel",
+    "countryButton", "countryMenu", "countrySearch", "countryOptions", "yearButton", "yearMenu", "yearOptions", "sizeBand", "priceBand", "searchInput", "labelMode", "rankingFuel",
     "lengthMin", "lengthMax", "priceMin", "priceMax", "salesMin", "salesMax",
     "starSelect", "starModel", "starBody", "starLength", "starPrice", "deleteStar",
   ].map((id) => [id, document.querySelector(`#${id}`)]));
 
   function setReferenceFeedback(text) { document.querySelector("#starFeedback").textContent = text; }
+
+  function periodLabel(year) { return year === 2026 ? "2026年1–7月" : `${year}全年`; }
+  function selectedPeriods() { return [...state.years].sort().map(periodLabel).join(" + ") || "未选择年份"; }
+  function renderYearOptions() {
+    controls.yearOptions.replaceChildren();
+    years.slice().sort((a, b) => b - a).forEach((year) => {
+      const label = document.createElement("label"), input = document.createElement("input"), span = document.createElement("span");
+      input.type = "checkbox"; input.checked = state.years.has(year); input.value = year;
+      span.textContent = periodLabel(year);
+      input.addEventListener("change", () => { if (input.checked) state.years.add(year); else state.years.delete(year); state.selectedId = null; controls.yearButton.textContent = selectedPeriods(); render(); });
+      label.append(input, span); controls.yearOptions.append(label);
+    });
+    controls.yearButton.textContent = selectedPeriods();
+  }
 
   function countryLabel() {
     const selected = [...state.countries];
@@ -165,21 +182,18 @@
 
   function filteredBase({ ignoreChartFuel = false, ignoreQuery = false } = {}) {
     return sourceRows.filter((row) => {
-      if (row.year !== state.year || !state.countries.has(row.country) || !state.bodies.has(row.body) || (!ignoreQuery && !matchesQuery(row))) return false;
+      if (!state.years.has(row.year) || !state.countries.has(row.country) || !state.bodies.has(row.body) || (!ignoreQuery && !matchesQuery(row))) return false;
       if (!ignoreChartFuel && !state.fuels.has(row.fuel)) return false;
-      return Number.isFinite(row.price) && row.length >= state.ranges.length[0] && row.length <= state.ranges.length[1]
-        && row.price >= state.ranges.price[0] && row.price <= state.ranges.price[1]
-        && row.sales >= state.ranges.sales[0] && row.sales <= state.ranges.sales[1];
+      return true;
     });
   }
 
   function mergeRows(rows) {
     const groups = new Map();
     rows.forEach((row) => {
-      const key = `${row.year}\u0000${row.model}\u0000${row.fuel}`;
+      const key = `${row.model}\u0000${row.fuel}`;
       if (!groups.has(key)) groups.set(key, {
-        id: `bubble-${row.year}-${row.model}-${row.fuel}`,
-        year: row.year,
+        id: `bubble-${row.model}-${row.fuel}`,
         model: row.model,
         fuel: row.fuel,
         sales: 0,
@@ -187,6 +201,7 @@
         prices: [],
         countryPrices: new Map(),
         countrySales: new Map(),
+        yearSales: new Map(),
         priceSources: new Set(),
         priceMethods: new Set(),
         bodies: new Set(),
@@ -197,30 +212,43 @@
       group.sales += row.sales;
       group.lengths.push(row.length);
       group.prices.push(row.price);
-      group.countryPrices.set(row.country, row.price);
+      const priceKey = `${row.country}\u0000${row.year}`;
+      if (!group.countryPrices.has(priceKey)) group.countryPrices.set(priceKey, []);
+      if (Number.isFinite(row.price)) group.countryPrices.get(priceKey).push(row.price);
       group.countrySales.set(row.country, (group.countrySales.get(row.country) || 0) + row.sales);
+      group.yearSales.set(row.year, (group.yearSales.get(row.year) || 0) + row.sales);
       if (row.priceSource) group.priceSources.add(row.priceSource);
       if (row.priceMethod) group.priceMethods.add(row.priceMethod);
       group.bodies.add(row.body);
       if (row.brand) group.brands.add(row.brand);
       group.sourceRows += row.sourceRows || 1;
     });
-    return [...groups.values()].map((group) => ({
+    return [...groups.values()].map((group) => {
+      const priceValues = [...group.countryPrices.values()].map(median).filter(Number.isFinite);
+      const length = median(group.lengths), price = median(priceValues);
+      return ({
       ...group,
-      length: Math.round(median(group.lengths)),
-      price: Math.round(median([...group.countryPrices.values()])),
-      priceMin: Math.min(...group.countryPrices.values()),
-      priceMax: Math.max(...group.countryPrices.values()),
+      length: length == null ? null : Math.round(length),
+      price: price == null ? null : Math.round(price),
+      priceMin: priceValues.length ? Math.min(...priceValues) : null,
+      priceMax: priceValues.length ? Math.max(...priceValues) : null,
       body: [...group.bodies].join(" / "),
       brand: [...group.brands].join(" / "),
       countries: [...group.countrySales.entries()].sort((a, b) => b[1] - a[1]).map(([country, sales]) => ({ country, sales })),
+      years: [...group.yearSales.entries()].sort((a, b) => a[0] - b[0]).map(([year, sales]) => ({ year, sales })),
       priceSource: [...group.priceSources].join(" · "),
       priceMethod: [...group.priceMethods].join(" / "),
-    }));
+    }); });
   }
 
-  function currentRows() { return mergeRows(filteredBase({ ignoreQuery: true })); }
-  function currentMatchedRows() { return mergeRows(filteredBase()); }
+  function inChartRange(row) {
+    return Number.isFinite(row.length) && Number.isFinite(row.price)
+      && row.length >= state.ranges.length[0] && row.length <= state.ranges.length[1]
+      && row.price >= state.ranges.price[0] && row.price <= state.ranges.price[1]
+      && row.sales >= state.ranges.sales[0] && row.sales <= state.ranges.sales[1];
+  }
+  function currentRows() { return mergeRows(filteredBase({ ignoreQuery: true })).filter(inChartRange); }
+  function currentMatchedRows() { return mergeRows(filteredBase()).filter(inChartRange); }
 
   function syncRangeInputs() {
     controls.lengthMin.value = Math.round(state.ranges.length[0]);
@@ -313,7 +341,7 @@
       : "";
     text.textContent = row.reference
       ? `参考车型 · ${row.body || "—"}\n${fmtInt.format(row.length)} mm · ${fmtEur.format(row.price)}\n红色五角星`
-      : `${row.fuel} · ${row.body}\n${fmtInt.format(row.length)} mm · ${fmtEur.format(row.price)}\n已选国家销量 ${fmtInt.format(row.sales)}\n${countrySummary}`;
+      : `${row.fuel} · ${row.body}\n${fmtInt.format(row.length)} mm · ${fmtEur.format(row.price)}\n已选期间销量 ${fmtInt.format(row.sales)}\n${countrySummary}${state.years.size > 1 ? `\n${row.years.map(({year,sales}) => `${periodLabel(year)} ${fmtInt.format(sales)}`).join(" · ")}` : ""}`;
     tooltip.append(title, text);
     const rect = chartWrap.getBoundingClientRect();
     tooltip.style.left = `${Math.max(5, Math.min(event.clientX - rect.left, rect.width - 255))}px`;
@@ -327,6 +355,7 @@
       set("#detailModel", "选择一个标记"); set("#detailFuel", "点击气泡或五角星后可固定查看");
       ["#detailBody", "#detailLength", "#detailPrice", "#detailSales", "#detailRank", "#detailSource"].forEach((id) => set(id, "—"));
       document.querySelector("#detailCountries").replaceChildren(Object.assign(document.createElement("li"), { textContent: "—" }));
+      document.querySelector("#detailYears").replaceChildren(Object.assign(document.createElement("li"), { textContent: "—" }));
       return;
     }
     const ranked = rows.slice().sort((a, b) => b.sales - a.sales);
@@ -339,6 +368,9 @@
     const countryList = document.querySelector("#detailCountries"); countryList.replaceChildren();
     if (row.reference || !row.countries?.length) countryList.append(Object.assign(document.createElement("li"), { textContent: "—" }));
     else row.countries.forEach(({ country, sales }) => { const item = document.createElement("li"); const name = document.createElement("span"); const value = document.createElement("strong"); name.textContent = country; value.textContent = fmtInt.format(sales); item.append(name, value); countryList.append(item); });
+    const yearList = document.querySelector("#detailYears"); yearList.replaceChildren();
+    if (row.reference || !row.years?.length) yearList.append(Object.assign(document.createElement("li"), { textContent: "—" }));
+    else row.years.forEach(({ year, sales }) => { const item = document.createElement("li"), name = document.createElement("span"), value = document.createElement("strong"); name.textContent = periodLabel(year); value.textContent = fmtInt.format(sales); item.append(name, value); yearList.append(item); });
   }
 
   function updateSummary(rows) {
@@ -355,6 +387,7 @@
     const list = document.querySelector("#rankingList");
     list.replaceChildren();
     const rows = mergeRows(filteredBase({ ignoreChartFuel: true }))
+      .filter(inChartRange)
       .filter((row) => state.rankingFuel === "ALL" || row.fuel === state.rankingFuel)
       .sort((a, b) => b.sales - a.sales).slice(0, 5);
     rows.forEach((row) => {
@@ -376,6 +409,15 @@
 
   function render() {
     const rows = currentRows();
+    const base = filteredBase(), incomplete = base.filter((row) => !Number.isFinite(row.length) || !Number.isFinite(row.price));
+    const complete = mergeRows(base).filter((row) => Number.isFinite(row.length) && Number.isFinite(row.price));
+    const outside = complete.filter((row) => !inChartRange(row));
+    document.querySelector("#sourceNote").textContent = `数据：${meta.sourceWorkbook || "源表"} · ${selectedPeriods()} · 价格统一 EUR · 已删除 Unspecified`;
+    document.querySelector("#coverageNote").textContent = `已选国家与期间：${fmtInt.format(base.reduce((sum, row) => sum + row.sales, 0))} 辆；${fmtInt.format(outside.length)} 个车型超出当前尺寸 / 价格 / 销量范围。`;
+    const missingPanel = document.querySelector("#missingData"), missingList = document.querySelector("#missingList");
+    missingPanel.hidden = !incomplete.length; missingList.replaceChildren();
+    document.querySelector("#missingSummary").textContent = `待补参数：${fmtInt.format(incomplete.length)} 条国家 / 年份记录，销量 ${fmtInt.format(incomplete.reduce((sum, row) => sum + row.sales, 0))} 辆（销量数据已保留）`;
+    incomplete.slice().sort((a, b) => b.sales - a.sales).forEach((row) => { const item = document.createElement("li"); item.textContent = `${row.country} · ${periodLabel(row.year)} · ${row.model} · ${row.fuel} · ${fmtInt.format(row.sales)} 辆 · ${[!Number.isFinite(row.length) ? "缺车长" : "", !Number.isFinite(row.price) ? "缺价格" : ""].filter(Boolean).join("、")}`; missingList.append(item); });
     const matchedRows = state.query ? currentMatchedRows() : rows;
     const matchedIds = new Set(matchedRows.map((row) => row.id));
     updateSummary(matchedRows); updateRanking();
@@ -458,10 +500,10 @@
   }
 
   function resetAll() {
-    state.year = 2026; state.countries = new Set([countries.includes("Germany") ? "Germany" : countries[0]].filter(Boolean)); state.bodies = new Set(bodies); state.fuels = new Set(fuels); state.query = ""; state.rankingFuel = "ALL"; state.labelMode = "top"; state.selectedId = null;
+    state.years = new Set([2026]); state.countries = new Set([countries.includes("Germany") ? "Germany" : countries[0]].filter(Boolean)); state.bodies = new Set(bodies); state.fuels = new Set(fuels); state.query = ""; state.rankingFuel = "ALL"; state.labelMode = "top"; state.selectedId = null;
     state.ranges = { length: [...defaults.length], price: [...defaults.price], sales: [...defaults.sales] }; setViewToRanges();
-    controls.yearSelect.value = "2026"; controls.sizeBand.value = "4400_4800"; controls.priceBand.value = "15000_100000"; controls.searchInput.value = ""; controls.rankingFuel.value = "ALL"; controls.labelMode.value = "top";
-    syncRangeInputs(); renderCountryOptions(); renderChips(); render();
+    controls.sizeBand.value = "4400_4800"; controls.priceBand.value = "15000_100000"; controls.searchInput.value = ""; controls.rankingFuel.value = "ALL"; controls.labelMode.value = "top";
+    syncRangeInputs(); renderCountryOptions(); renderYearOptions(); renderChips(); render();
   }
 
   function zoom(factor, centerX = .5, centerY = .5) {
@@ -469,12 +511,16 @@
     state.viewX = zoomDomain(state.viewX, centerX, limits.length, 80); state.viewY = zoomDomain(state.viewY, centerY, limits.price, 5000); render();
   }
 
-  controls.yearSelect.addEventListener("change", () => { state.year = Number(controls.yearSelect.value); state.selectedId = null; render(); });
+  controls.yearButton.addEventListener("click", () => { controls.yearMenu.hidden = !controls.yearMenu.hidden; controls.yearButton.setAttribute("aria-expanded", String(!controls.yearMenu.hidden)); });
+  document.querySelector("#selectAllYears").addEventListener("click", () => { state.years = new Set(years); state.selectedId = null; renderYearOptions(); render(); });
+  document.querySelector("#clearYears").addEventListener("click", () => { state.years.clear(); state.selectedId = null; renderYearOptions(); render(); });
   controls.countryButton.addEventListener("click", () => { controls.countryMenu.hidden = !controls.countryMenu.hidden; controls.countryButton.setAttribute("aria-expanded", String(!controls.countryMenu.hidden)); if (!controls.countryMenu.hidden) controls.countrySearch.focus(); });
   controls.countrySearch.addEventListener("input", renderCountryOptions);
   document.querySelector("#selectAllCountries").addEventListener("click", () => setCountries(countries));
   document.querySelector("#clearCountries").addEventListener("click", () => setCountries([]));
   document.addEventListener("pointerdown", (event) => { if (!document.querySelector(".country-field").contains(event.target)) { controls.countryMenu.hidden = true; controls.countryButton.setAttribute("aria-expanded", "false"); } });
+  document.addEventListener("pointerdown", (event) => { if (!document.querySelector(".year-field").contains(event.target)) { controls.yearMenu.hidden = true; controls.yearButton.setAttribute("aria-expanded", "false"); } });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") { controls.countryMenu.hidden = true; controls.yearMenu.hidden = true; controls.countryButton.setAttribute("aria-expanded", "false"); controls.yearButton.setAttribute("aria-expanded", "false"); } });
   controls.sizeBand.addEventListener("change", () => applySizeBand(controls.sizeBand.value));
   controls.priceBand.addEventListener("change", () => applyPriceBand(controls.priceBand.value));
   controls.searchInput.addEventListener("input", () => { state.query = controls.searchInput.value.trim().toLocaleLowerCase(); state.selectedId = null; render(); });
@@ -509,6 +555,7 @@
           type: "object",
           properties: {
             year: { type: "integer", enum: [2024, 2025, 2026] },
+            years: { type: "array", items: { type: "integer", enum: years }, uniqueItems: true },
             countries: { type: "array", items: { type: "string", enum: countries }, uniqueItems: true },
             bodies: { type: "array", items: { type: "string", enum: bodies }, uniqueItems: true },
             fuels: { type: "array", items: { type: "string", enum: fuels }, uniqueItems: true },
@@ -521,29 +568,31 @@
         annotations: { readOnlyHint: false, untrustedContentHint: false },
         execute(input) {
           if (input.year != null && ![2024, 2025, 2026].includes(input.year)) throw new Error("不支持的年份");
+          if (input.years && input.years.some((value) => !years.includes(value))) throw new Error("不支持的年份");
+          if (input.year != null && input.years) throw new Error("请选择 year 或 years 参数");
           if (input.countries && input.countries.some((value) => !countries.includes(value))) throw new Error("国家无效");
           if (input.bodies && input.bodies.some((value) => !bodies.includes(value))) throw new Error("车身形式无效");
           if (input.fuels && input.fuels.some((value) => !fuels.includes(value))) throw new Error("动力形式无效");
           const nextLength = [input.lengthMin ?? state.ranges.length[0], input.lengthMax ?? state.ranges.length[1]];
           const nextPrice = [input.priceMin ?? state.ranges.price[0], input.priceMax ?? state.ranges.price[1]];
           if (nextLength[0] > nextLength[1] || nextPrice[0] > nextPrice[1]) throw new Error("范围下限不能高于上限");
-          if (input.year != null) state.year = input.year;
+          if (input.year != null) state.years = new Set([input.year]);
+          if (input.years) state.years = new Set(input.years);
           if (input.countries) state.countries = new Set(input.countries);
           if (input.bodies) state.bodies = new Set(input.bodies);
           if (input.fuels) state.fuels = new Set(input.fuels);
           state.ranges.length = nextLength; state.ranges.price = nextPrice;
           if (input.query != null) state.query = input.query.trim().toLocaleLowerCase();
-          controls.yearSelect.value = String(state.year); controls.searchInput.value = input.query ?? controls.searchInput.value;
+          controls.searchInput.value = input.query ?? controls.searchInput.value;
           controls.sizeBand.value = "CUSTOM"; controls.priceBand.value = "CUSTOM";
-          syncRangeInputs(); setViewToRanges(); renderCountryOptions(); renderChips(); render();
+          syncRangeInputs(); setViewToRanges(); renderCountryOptions(); renderYearOptions(); renderChips(); render();
           const rows = state.query ? currentMatchedRows() : currentRows();
-          return { countries: [...state.countries], year: state.year, vehicleCount: rows.length, sales: rows.reduce((sum, row) => sum + row.sales, 0) };
+          return { countries: [...state.countries], years: [...state.years], vehicleCount: rows.length, sales: rows.reduce((sum, row) => sum + row.sales, 0) };
         },
       })).catch(() => {});
     } catch (_) {}
   }
 
-  populateRankingFuel(); renderCountryOptions(); renderChips(); syncRangeInputs(); syncReferenceEditor();
-  document.querySelector("#sourceNote").textContent = `数据：${meta.sourceWorkbook || "源表"} · ${meta.latestPeriod || "2026 YTD"} · 价格为欧洲 MSRP 中位数（EUR）· 已删除 Unspecified`;
+  populateRankingFuel(); renderCountryOptions(); renderYearOptions(); renderChips(); syncRangeInputs(); syncReferenceEditor();
   render();
 })();

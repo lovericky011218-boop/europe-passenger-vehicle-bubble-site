@@ -229,8 +229,16 @@ meta = {
     'priceMethodSales': {key: round(value) for key, value in sorted(method_sales.items())},
     'webSources': manual_rows,
 }
+fields = [key for key in rows[0] if key != 'id']
+string_fields = [key for key in fields if isinstance(rows[0][key], str)]
+dictionaries = {key: list(dict.fromkeys(row[key] for row in rows)) for key in string_fields}
+indexes = {key: {value: index for index, value in enumerate(values)} for key, values in dictionaries.items()}
+packed = {'fields': fields, 'dictionaries': dictionaries, 'rows': [
+    [indexes[key][row[key]] if key in indexes else row[key] for key in fields] for row in rows
+]}
 OUT.write_text(
-    'window.VEHICLE_DATA=' + json.dumps(rows, ensure_ascii=False, separators=(',', ':')) + ';\n'
+    'window.VEHICLE_DATA=(() => {const p=' + json.dumps(packed, ensure_ascii=False, separators=(',', ':'))
+    + ';const slug=v=>String(v).normalize("NFKD").replace(/[^\\x00-\\x7F]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"vehicle";return p.rows.map(values=>{const row=Object.fromEntries(p.fields.map((key,i)=>[key,p.dictionaries[key]?p.dictionaries[key][values[i]]:values[i]]));row.id=`${slug(row.country)}-${row.year}-${slug(row.model)}-${row.fuel.toLowerCase()}-${row.body.toLowerCase()}`;return row;});})();\n'
     + 'window.REFERENCE_DATA=' + json.dumps(refs, ensure_ascii=False, separators=(',', ':')) + ';\n'
     + 'window.DATA_META=' + json.dumps(meta, ensure_ascii=False, separators=(',', ':')) + ';\n',
     encoding='utf-8',

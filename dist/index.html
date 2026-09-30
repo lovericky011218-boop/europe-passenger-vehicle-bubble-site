@@ -6,7 +6,7 @@
     <meta name="description" content="欧洲 39 国 Car、SUV 与 MPV 的车长、欧元建议价与销量交互气泡图" />
     <title>欧洲乘用车市场图谱</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23172a31'/%3E%3Ccircle cx='25' cy='36' r='14' fill='%23dcf8df' stroke='%2335bd68' stroke-width='4'/%3E%3Cpath d='M44 12l3.2 9.8h10.3l-8.3 6 3.2 9.8-8.4-6.1-8.3 6.1 3.2-9.8-8.3-6h10.3z' fill='%23ef3c2f'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="./styles.css?v=6" />
+    <link rel="stylesheet" href="./styles.css?v=7" />
   </head>
   <body>
     <main class="app-shell">
@@ -14,14 +14,14 @@
         <div>
           <p class="eyebrow">EUROPE MARKET EXPLORER</p>
           <h1>欧洲乘用车市场图谱</h1>
-          <p class="measure-line">横轴：车长　纵轴：已选国家 MSRP 中位数（EUR）　气泡面积：已选国家销量合计</p>
+          <p class="measure-line">横轴：车长　纵轴：已选国家与年份 MSRP 中位数（EUR）　气泡面积：已选国家与期间销量合计</p>
         </div>
         <button class="plain-button" id="resetAll" type="button">恢复首屏</button>
       </header>
 
       <section class="filter-board" aria-label="图表筛选">
         <div class="field country-field"><span>国家</span><button id="countryButton" class="country-button" type="button" aria-expanded="false">选择国家</button><div id="countryMenu" class="country-menu" hidden><input id="countrySearch" type="search" placeholder="搜索国家" autocomplete="off" /><div class="country-menu-actions"><button id="selectAllCountries" type="button">全选</button><button id="clearCountries" type="button">清空</button></div><div id="countryOptions" class="country-options"></div></div></div>
-        <label class="field"><span>年份</span><select id="yearSelect"><option value="2026">2026 YTD</option><option value="2025">2025</option><option value="2024">2024</option></select></label>
+        <div class="field year-field"><span>年份</span><button id="yearButton" class="country-button" type="button" aria-expanded="false" aria-controls="yearMenu">选择年份</button><div id="yearMenu" class="country-menu" hidden><div class="country-menu-actions"><button id="selectAllYears" type="button">全选合并</button><button id="clearYears" type="button">清空</button></div><div id="yearOptions" class="country-options year-options"></div><p class="period-help">多选合并销量；2026 为 1–7 月累计。</p></div></div>
         <label class="field"><span>尺寸段</span><select id="sizeBand"><option value="4400_4800">4400–4800 mm</option><option value="ALL">全部尺寸</option><option value="LT4000">4000 mm 以下</option><option value="4000_4400">4000–4399 mm</option><option value="4400_4600">4400–4599 mm</option><option value="4600_4800">4600–4799 mm</option><option value="4800_5000">4800–4999 mm</option><option value="GE5000">5000 mm 及以上</option><option value="CUSTOM">自定义范围</option></select></label>
         <label class="field"><span>价格段</span><select id="priceBand"><option value="15000_100000">€15,000–€100,000</option><option value="ALL">全部价格</option><option value="0_25000">€25,000 以下</option><option value="25000_40000">€25,000–€39,999</option><option value="40000_60000">€40,000–€59,999</option><option value="60000_100000">€60,000–€99,999</option><option value="100000_INF">€100,000 及以上</option><option value="CUSTOM">自定义范围</option></select></label>
         <label class="field search-field"><span>车型搜索</span><input id="searchInput" type="search" placeholder="输入品牌或车型，匹配项高亮" autocomplete="off" /></label>
@@ -35,6 +35,8 @@
           <div class="chip-list" id="fuelFilter" aria-label="动力形式筛选"></div>
         </div>
       </section>
+
+      <p class="coverage-note" id="coverageNote" aria-live="polite"></p>
 
       <section class="stat-strip" aria-label="当前筛选摘要">
         <article><span>匹配车型</span><strong id="statCount">—</strong></article>
@@ -58,7 +60,7 @@
               <div class="tooltip" id="tooltip" role="status" aria-live="polite"></div>
               <div class="empty-state" id="emptyState" hidden>当前筛选条件下没有可绘制的车型</div>
             </div>
-            <footer class="chart-foot"><span id="sourceNote">正在读取数据…</span><span>销量按车型＋动力形式合并</span></footer>
+            <footer class="chart-foot"><span id="sourceNote">正在读取数据…</span><span>已选国家与年份按车型＋动力形式合并</span></footer>
           </article>
 
           <div class="below-chart">
@@ -74,6 +76,7 @@
               <ol id="rankingList"></ol>
             </section>
           </div>
+          <details id="missingData" class="range-card" hidden><summary id="missingSummary">待补参数</summary><ul id="missingList"></ul></details>
         </div>
 
         <aside class="side-panel">
@@ -81,6 +84,7 @@
             <p class="side-label">车型详情</p><h2 id="detailModel">选择一个标记</h2><p class="detail-fuel" id="detailFuel">点击气泡或五角星后可固定查看</p>
             <dl class="detail-grid"><div><dt>车身</dt><dd id="detailBody">—</dd></div><div><dt>车长</dt><dd id="detailLength">—</dd></div><div><dt>欧洲 MSRP</dt><dd id="detailPrice">—</dd></div><div><dt>合计销量</dt><dd id="detailSales">—</dd></div><div><dt>销量排名</dt><dd id="detailRank">—</dd></div><div><dt>价格来源</dt><dd id="detailSource">—</dd></div></dl>
             <div class="country-breakdown"><p>已选国家销量</p><ul id="detailCountries"><li>—</li></ul></div>
+            <div class="country-breakdown"><p>已选年份销量</p><ul id="detailYears"><li>—</li></ul></div>
           </section>
 
           <form class="star-card" id="starForm">
@@ -98,6 +102,6 @@
         </aside>
       </section>
     </main>
-    <script src="./data.js?v=1"></script><script src="./app.js?v=1"></script>
+    <script src="./data.js?v=2"></script><script src="./app.js?v=2"></script>
   </body>
 </html>
