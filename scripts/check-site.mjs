@@ -41,6 +41,19 @@ for (const phrase of ["ignoreChartFuel", "ignoreQuery", "currentMatchedRows", "m
 assert.match(html, /匹配项高亮/);
 assert.match(app, /europe-market-reference-stars-v1/);
 assert.match(app, /function deleteReference/);
+assert.match(html, /id="exportPng"/);
+assert.match(html, /id="exportFeedback"/);
+assert.match(app, /canvas\.toBlob\(resolve, "image\/png"\)/);
+const exportContext = { ctx: {measureText: (text) => ({width: Array.from(text).length * 10})} };
+vm.createContext(exportContext);
+vm.runInContext(app.slice(app.indexOf("  function wrapExportText("), app.indexOf("  async function exportChartPng(")) + '\nthis.lines = wrapExportText(ctx, "挪威BYD😀", 20);', exportContext);
+assert.deepEqual(Array.from(exportContext.lines), ["挪威", "BY", "D😀"]);
+assert.equal(exportContext.lines.join(""), "挪威BYD😀");
+for (const id of ["fuelShares", "bodyShares", "newEnergyRate", "newEnergySales", "fuelShareBar", "bodyShareBar", "newEnergyBar"]) assert.match(html, new RegExp(`id="${id}"`));
+const wheelFactors = app.match(/zoom\(event\.deltaY > 0 \? ([\d.]+) : ([\d.]+)/);
+assert.ok(wheelFactors);
+assert.ok(Math.abs((Number(wheelFactors[1]) - 1) - (1.15 - 1) / 2) < 1e-10);
+assert.ok(Math.abs((1 - Number(wheelFactors[2])) - (1 - .86) / 2) < 1e-10);
 assert.doesNotMatch(`${html}\n${app}`, /Brazil|巴西|BRL|brazil-market/);
 
 // Exercise the actual shared filtering/aggregation functions without a browser.
@@ -70,5 +83,49 @@ assert.equal(context.results.find((row) => row.fuel === "BEV").price, 45000);
 context.state.years.clear();
 vm.runInContext("this.results = currentRows();", context);
 assert.equal(context.results.length, 0);
+
+// Shares use the same merged/range-filtered chart population, independent of search and zoom.
+context.sourceRows = [
+  {country:"Norway",year:2025,model:"Mixed",fuel:"BEV",body:"SUV",length:4500,price:30000,sales:200},
+  {country:"Germany",year:2026,model:"Mixed",fuel:"BEV",body:"Car",length:4500,price:50000,sales:100},
+  {country:"Germany",year:2026,model:"Hybrid",fuel:"PHEV",body:"SUV",length:4600,price:40000,sales:100},
+  {country:"Norway",year:2026,model:"Range",fuel:"REEV",body:"MPV",length:4700,price:40000,sales:50},
+  {country:"Germany",year:2026,model:"Petrol",fuel:"ICE",body:"Car",length:4500,price:30000,sales:550},
+  {country:"Norway",year:2026,model:"Unknown",fuel:"BEV",body:"SUV",length:null,price:null,sales:3000},
+  {country:"Norway",year:2026,model:"Outside",fuel:"BEV",body:"SUV",length:5500,price:40000,sales:3000},
+];
+context.state.years = new Set([2025,2026]); context.state.bodies = new Set(["SUV","Car","MPV"]); context.state.fuels = new Set(["BEV","PHEV","REEV","ICE"]);
+context.state.ranges = {length:[4400,4800],price:[0,100000],sales:[0,5000]};
+const calculateShares = () => vm.runInContext('this.shares = segmentComposition(currentRows(), ["BEV","PHEV","REEV","ICE"], ["SUV","Car","MPV"]);', context);
+calculateShares();
+assert.equal(context.shares.total, 1000);
+assert.equal(context.shares.newEnergySales, 450);
+assert.equal(context.shares.newEnergyShare, .45);
+assert.deepEqual(Array.from(context.shares.fuels, (entry) => entry.share), [.3,.1,.05,.55]);
+assert.deepEqual(Array.from(context.shares.bodies, (entry) => entry.share), [.3,.65,.05]);
+context.state.query = "does not exist"; context.state.viewX = [4500,4600];
+calculateShares(); assert.equal(context.shares.total, 1000);
+context.state.bodies = new Set(["SUV"]);
+calculateShares(); assert.equal(context.shares.total, 300); assert.equal(context.shares.newEnergyShare, 1);
+context.state.fuels = new Set(["ICE"]);
+calculateShares(); assert.equal(context.shares.total, 0); assert.equal(context.shares.newEnergyShare, null);
+assert.ok(context.shares.fuels.every((entry) => entry.share === null));
+assert.ok(context.shares.bodies.every((entry) => entry.share === null));
+
+// Rendered segment widths remain truthful for zero sales and empty selections.
+const makeNode = () => ({children:[],style:{setProperty(){}},replaceChildren(){this.children=[];},append(...nodes){this.children.push(...nodes);}});
+const shareNodes = Object.fromEntries(["fuelShares","bodyShares","fuelShareBar","bodyShareBar","newEnergyRate","newEnergySales","newEnergyBar"].map((id) => [`#${id}`,makeNode()]));
+context.document = {querySelector:(id) => shareNodes[id],createElement:makeNode};
+context.fuels = ["BEV","PHEV","REEV","ICE"]; context.bodies = ["SUV","Car","MPV"];
+context.palette = Object.fromEntries(context.fuels.map((fuel) => [fuel,{stroke:"#078d86"}]));
+context.fmtInt = new Intl.NumberFormat("zh-CN"); context.shareLabel = (value) => value == null ? "—" : `${(value*100).toFixed(1)}%`;
+vm.runInContext("updateComposition(currentRows());", context);
+assert.equal(shareNodes["#newEnergyBar"].style.width, "0%");
+assert.equal(shareNodes["#newEnergyRate"].textContent, "—");
+context.state.bodies = new Set(context.bodies); context.state.fuels = new Set(context.fuels);
+vm.runInContext("updateComposition(currentRows());", context);
+assert.deepEqual(shareNodes["#bodyShareBar"].children.map((node) => node.style.width), ["30%","65%","5%"]);
+assert.equal(shareNodes["#newEnergyBar"].style.width, "45%");
+assert.equal(shareNodes["#newEnergyRate"].textContent, "45.0%");
 
 console.log(`Checked ${VEHICLE_DATA.length} Europe aggregate rows across ${DATA_META.countries.length} countries.`);
